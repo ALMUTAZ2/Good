@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مسابقة رمضان اليومية</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #0f172a;
+            color: white;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .timer-bar {
+            transition: width 1s linear;
+        }
+        
+        .option-correct {
+            background-color: rgba(34, 197, 94, 0.2) !important;
+            border-color: rgb(34, 197, 94) !important;
+        }
+        
+        .option-wrong {
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            border-color: rgb(239, 68, 68) !important;
+        }
+        
+        .option-disabled {
+            pointer-events: none;
+        }
+        
+        .countdown-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+        
+        .countdown-svg {
+            transform: rotateY(-180deg) rotateZ(-90deg);
+        }
+        
+        .countdown-circle {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+            fill: none;
+            stroke-width: 4px;
+            stroke: #60a5fa;
+            transition: stroke-dashoffset 1s linear;
+        }
+        
+        .countdown-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 flex flex-col">
+    <div class="container mx-auto max-w-2xl flex-grow flex flex-col">
+        <!-- شاشة البداية -->
+        <div id="start-screen" class="flex-grow flex flex-col items-center justify-center text-center p-6 hidden">
+            <h1 class="text-3xl font-bold mb-2">مسابقة رمضان اليومية</h1>
+            <p id="date-display" class="text-xl opacity-75 mb-6"></p>
+            
+            <div class="bg-white/5 p-6 rounded-xl w-full max-w-md">
+                <h2 class="text-xl font-bold mb-4">أدخل اسمك للمشاركة</h2>
+                <input 
+                    id="player-name" 
+                    type="text" 
+                    placeholder="الاسم الثلاثي" 
+                    class="w-full p-3 rounded-lg bg-white/10 border border-blue-500/30 mb-4 text-white"
+                >
+                <button 
+                    id="start-button" 
+                    disabled
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    بدء المسابقة
+                </button>
+            </div>
+        </div>
+        
+        <!-- شاشة خارج وقت المسابقة -->
+        <div id="out-of-time-screen" class="flex-grow flex flex-col items-center justify-center text-center p-6 hidden">
+            <h1 class="text-3xl font-bold mb-2">مسابقة رمضان اليومية</h1>
+            <p id="date-display-out" class="text-xl opacity-75 mb-6"></p>
+            
+            <div class="bg-white/5 p-6 rounded-xl w-full max-w-md">
+                <i data-lucide="clock" class="w-16 h-16 mx-auto mb-4 text-blue-400"></i>
+                <h2 class="text-xl font-bold mb-2">المسابقة غير متاحة حالياً</h2>
+                <p id="time-message" class="opacity-75 mb-4">المسابقة متاحة يومياً في أوقات محددة</p>
+            </div>
+        </div>
+        
+        <!-- شاشة المشاركة السابقة -->
+        <div id="already-participated-screen" class="flex-grow flex flex-col items-center justify-center text-center p-6 hidden">
+            <h1 class="text-3xl font-bold mb-2">مسابقة رمضان اليومية</h1>
+            <p id="date-display-participated" class="text-xl opacity-75 mb-6"></p>
+            
+            <div class="bg-white/5 p-6 rounded-xl w-full max-w-md">
+                <i data-lucide="check-circle" class="w-16 h-16 mx-auto mb-4 text-green-400"></i>
+                <h2 class="text-xl font-bold mb-2">لقد شاركت بالفعل اليوم</h2>
+                <p class="opacity-75 mb-4">يمكنك المشاركة مرة واحدة فقط في اليوم</p>
+            </div>
+        </div>
+        
+        <!-- شاشة العد التنازلي -->
+        <div id="countdown-screen" class="flex-grow flex flex-col items-center justify-center text-center p-6 hidden">
+            <h1 class="text-3xl font-bold mb-2">مسابقة رمضان اليومية</h1>
+            <p id="player-welcome" class="text-xl mb-8"></p>
+            
+            <div class="countdown-container mb-4">
+                <svg class="countdown-svg" width="100" height="100">
+                    <circle class="countdown-circle" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="countdown-text">
+                    <span id="countdown-number" class="text-4xl font-bold">3</span>
+                    <div id="countdown-text" class="text-sm">استعد</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- شاشة المسابقة -->
+        <div id="quiz-screen" class="flex-grow flex flex-col hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold">مسابقة رمضان اليومية</h1>
+                <p id="question-counter" class="text-blue-400"></p>
+            </div>
+            
+            <div class="bg-white/5 p-6 rounded-xl mb-6 flex-grow">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="bg-white/10 px-3 py-1 rounded-lg">
+                        <span id="timer">10</span> ثانية
+                    </div>
+                </div>
+                
+                <div class="w-full h-1 bg-white/10 mb-6 rounded-full overflow-hidden">
+                    <div id="timer-bar" class="timer-bar h-full bg-blue-500 rounded-full"></div>
+                </div>
+                
+                <h2 id="question-text" class="text-xl font-bold mb-6"></h2>
+                
+                <div id="options-container" class="space-y-3">
+                    <!-- خيارات الإجابة ستضاف هنا ديناميكياً -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- شاشة النتائج -->
+        <div id="results-screen" class="flex-grow flex flex-col hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold">نتائج المسابقة</h1>
+            </div>
+            
+            <div class="bg-white/5 p-6 rounded-xl mb-6">
+                <div class="flex flex-col md:flex-row items-center justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h2 class="text-xl font-bold mb-2">النتيجة النهائية</h2>
+                        <p id="final-name" class="opacity-90"></p>
+                        <p id="final-score" class="opacity-90"></p>
+                    </div>
+                    <div class="text-center">
+                        <i data-lucide="trophy" class="w-16 h-16 mx-auto mb-2 text-yellow-400"></i>
+                        <p class="text-sm opacity-75">شكراً لمشاركتك!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="text-xl font-bold mb-4">مراجعة الإجابات</h3>
+            <div id="answers-review" class="space-y-4 mb-6">
+                <!-- ستضاف مراجعة الإجابات هنا ديناميكياً -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // تهيئة Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBiSZe4Hv1ypDwM4XoiGUy8xKvKDVo_Wbw",
+            authDomain: "ramadan-quiz-app.firebaseapp.com",
+            projectId: "ramadan-quiz-app",
+            storageBucket: "ramadan-quiz-app.appspot.com",
+            messagingSenderId: "627027376760",
+            appId: "1:627027376760:web:c6c1ca8b0f7c1e1a8b8e8a"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // دالة تحديد وقت المسابقة (قم بتعديل هذه الدالة فقط للتحكم في وقت المسابقة)
+        function quizTimeConfig() {
+            return {
+                // وقت بدء المسابقة (الساعة:الدقيقة)
+                startTime: "06:15",
+                
+                // وقت انتهاء المسابقة (الساعة:الدقيقة)
+                endTime: "07:10"
+            };
+        }
+
+        // العناصر
+        const elements = {
+            startScreen: document.getElementById('start-screen'),
+            outOfTimeScreen: document.getElementById('out-of-time-screen'),
+            alreadyParticipatedScreen: document.getElementById('already-participated-screen'),
+            countdownScreen: document.getElementById('countdown-screen'),
+            quizScreen: document.getElementById('quiz-screen'),
+            resultsScreen: document.getElementById('results-screen'),
+            
+            playerNameInput: document.getElementById('player-name'),
+            startButton: document.getElementById('start-button'),
+            playerWelcome: document.getElementById('player-welcome'),
+            
+            questionCounter: document.getElementById('question-counter'),
+            questionText: document.getElementById('question-text'),
+            optionsContainer: document.getElementById('options-container'),
+            timer: document.getElementById('timer'),
+            timerBar: document.getElementById('timer-bar')
+        };
+        
+        // بنك الأسئلة
+        const ramadanQuestions = {
+            // أسئلة اليوم الأول
+            1: [
+                {
+                    question: "ما هو أول يوم من أيام شهر رمضان المبارك لهذا العام؟",
+                    options: ["10 مارس 2024", "11 مارس 2024", "12 مارس 2024", "13 مارس 2024"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو الركن من أركان الإسلام الذي يتحقق في شهر رمضان؟",
+                    options: ["الشهادتان", "الصلاة", "الزكاة", "الصيام"],
+                    correct: 3
+                },
+                {
+                    question: "ما هي الليلة التي تعادل العبادة فيها أكثر من ألف شهر؟",
+                    options: ["ليلة النصف من شعبان", "ليلة القدر", "ليلة العيد", "ليلة الإسراء والمعراج"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو العمل الذي يضاعف ثوابه في شهر رمضان؟",
+                    options: ["الصدقة", "قراءة القرآن", "صلاة النافلة", "كل ما سبق"],
+                    correct: 3
+                },
+                {
+                    question: "ما هي السورة التي يستحب قراءتها في صلاة التراويح في الليلة الأولى من رمضان؟",
+                    options: ["البقرة", "الفاتحة", "يس", "الملك"],
+                    correct: 0
+                }
+            ],
+            
+            // أسئلة اليوم الثاني
+            2: [
+                {
+                    question: "ما هو المقصود بالسحور؟",
+                    options: ["وجبة الإفطار", "الطعام الذي يؤكل قبل الفجر", "صلاة التراويح", "الاعتكاف في المسجد"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو الشهر الذي أنزل فيه القرآن الكريم؟",
+                    options: ["شعبان", "رمضان", "رجب", "شوال"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو الدعاء المستحب عند الإفطار؟",
+                    options: ["اللهم إني صائم", "اللهم لك صمت وعلى رزقك أفطرت", "اللهم تقبل منا", "اللهم بارك لنا في رمضان"],
+                    correct: 1
+                },
+                {
+                    question: "متى تبدأ العشر الأواخر من رمضان؟",
+                    options: ["من ليلة 20 رمضان", "من ليلة 21 رمضان", "من ليلة 25 رمضان", "من ليلة 27 رمضان"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو عدد ركعات صلاة التراويح التي كان يصليها النبي صلى الله عليه وسلم؟",
+                    options: ["8 ركعات", "11 ركعة", "20 ركعة", "23 ركعة"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم الثالث
+            3: [
+                {
+                    question: "ما هو المقصود بزكاة الفطر؟",
+                    options: ["صدقة تخرج في نهاية رمضان", "صدقة تخرج في بداية رمضان", "صدقة تخرج في منتصف رمضان", "صدقة تخرج في يوم العيد"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو الاعتكاف؟",
+                    options: ["الصلاة في المسجد", "الصيام في المسجد", "لزوم المسجد للعبادة", "قراءة القرآن في المسجد"],
+                    correct: 2
+                },
+                {
+                    question: "متى يبدأ وقت الإمساك عن الطعام والشراب في الصيام؟",
+                    options: ["من غروب الشمس", "من منتصف الليل", "من طلوع الفجر الصادق", "من طلوع الشمس"],
+                    correct: 2
+                },
+                {
+                    question: "ما هي السنة في تعجيل الإفطار؟",
+                    options: ["الإفطار قبل أذان المغرب", "الإفطار بعد أذان المغرب مباشرة", "الإفطار بعد صلاة المغرب", "الإفطار عند غروب الشمس"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو أفضل عمل في العشر الأواخر من رمضان؟",
+                    options: ["الصدقة", "قيام الليل", "الاعتكاف", "قراءة القرآن"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم الرابع
+            4: [
+                {
+                    question: "ما هو مقدار زكاة الفطر؟",
+                    options: ["صاع من طعام", "نصف صاع من طعام", "مد من طعام", "صاع من تمر"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو الصيام في اللغة؟",
+                    options: ["الأكل والشرب", "الإمساك عن الطعام", "الإمساك عن الكلام", "الإمساك عن المفطرات"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو أول مسجد اعتكف فيه النبي صلى الله عليه وسلم؟",
+                    options: ["المسجد الحرام", "المسجد النبوي", "المسجد الأقصى", "مسجد قباء"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو الشهر الذي يلي رمضان مباشرة؟",
+                    options: ["شعبان", "شوال", "ذو القعدة", "ذو الحجة"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم صيام رمضان؟",
+                    options: ["سنة", "واجب", "فرض", "مستحب"],
+                    correct: 2
+                }
+            ],
+            
+            // أسئلة اليوم الخامس
+            5: [
+                {
+                    question: "ما هو أول ما نزل من القرآن الكريم؟",
+                    options: ["سورة الفاتحة", "سورة العلق", "سورة البقرة", "سورة الإخلاص"],
+                    correct: 1
+                },
+                {
+                    question: "من هم الذين يجوز لهم الإفطار في رمضان مع القضاء؟",
+                    options: ["المريض والمسافر", "الشيخ الكبير", "الحامل والمرضع", "أ و ج"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو المقصود بليلة القدر؟",
+                    options: ["ليلة نزول القرآن", "ليلة العيد", "ليلة النصف من شعبان", "ليلة الإسراء والمعراج"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو أفضل ما يقال في ليلة القدر؟",
+                    options: ["سبحان الله وبحمده", "لا إله إلا الله", "اللهم إنك عفو تحب العفو فاعف عني", "اللهم اغفر لي"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو عدد أبواب الجنة التي يدخل منها الصائمون؟",
+                    options: ["باب واحد", "بابان", "ثلاثة أبواب", "ثمانية أبواب"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم السادس
+            6: [
+                {
+                    question: "ما هو اسم الباب الذي يدخل منه الصائمون في الجنة؟",
+                    options: ["باب الصدقة", "باب الريان", "باب الصلاة", "باب التوبة"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم من أفطر متعمداً في نهار رمضان بدون عذر؟",
+                    options: ["عليه القضاء فقط", "عليه القضاء والكفارة", "عليه الكفارة فقط", "لا شيء عليه"],
+                    correct: 1
+                },
+                {
+                    question: "ما هي الكفارة الواجبة على من جامع زوجته في نهار رمضان؟",
+                    options: ["صيام يوم بدل يوم", "صيام شهرين متتابعين", "إطعام ستين مسكيناً", "عتق رقبة أو صيام شهرين متتابعين أو إطعام ستين مسكيناً"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم صلاة التراويح؟",
+                    options: ["فرض", "واجب", "سنة مؤكدة", "مستحب"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو الوقت الأفضل لأداء صلاة التراويح؟",
+                    options: ["بعد صلاة العشاء مباشرة", "في منتصف الليل", "في الثلث الأخير من الليل", "قبل السحور"],
+                    correct: 0
+                }
+            ],
+            
+            // أسئلة اليوم السابع
+            7: [
+                {
+                    question: "ما هو حكم من نسي أنه صائم فأكل أو شرب؟",
+                    options: ["يبطل صومه", "لا يبطل صومه", "عليه القضاء", "عليه الكفارة"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم استعمال السواك للصائم؟",
+                    options: ["مكروه", "حرام", "مستحب", "واجب"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم استعمال معجون الأسنان للصائم؟",
+                    options: ["جائز مطلقاً", "مكروه", "حرام", "جائز إذا لم يبتلع شيئاً منه"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم القبلة للصائم؟",
+                    options: ["حرام مطلقاً", "مكروهة مطلقاً", "جائزة لمن يملك نفسه", "واجبة"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم الحجامة للصائم؟",
+                    options: ["تبطل الصوم", "لا تبطل الصوم", "مكروهة", "واجبة"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم الثامن
+            8: [
+                {
+                    question: "ما هو حكم صيام الست من شوال؟",
+                    options: ["واجب", "فرض", "سنة", "مكروه"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم صيام يوم الشك (يوم 30 من شعبان)؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم صيام يوم العيد؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم صيام يوم عرفة لغير الحاج؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم صيام يوم عاشوراء؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم التاسع
+            9: [
+                {
+                    question: "ما هو أفضل ما يفطر عليه الصائم؟",
+                    options: ["الماء", "التمر", "اللبن", "الخبز"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم تأخير قضاء رمضان إلى ما بعد رمضان التالي بدون عذر؟",
+                    options: ["جائز", "مكروه", "حرام", "عليه القضاء والفدية"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو مقدار الفدية الواجبة على الشيخ الكبير الذي لا يستطيع الصيام؟",
+                    options: ["إطعام مسكين عن كل يوم", "إطعام مسكينين عن كل يوم", "صيام ثلاثة أيام عن كل يوم", "لا شيء عليه"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو حكم من أفطر في رمضان بسبب المرض ثم مات قبل أن يتمكن من القضاء؟",
+                    options: ["يصوم عنه وليه", "يطعم عنه وليه", "لا شيء عليه", "عليه الفدية"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم من أفطر في رمضان بسبب السفر ثم أقام ولم يقض حتى دخل رمضان التالي؟",
+                    options: ["عليه القضاء فقط", "عليه القضاء والفدية", "عليه الفدية فقط", "لا شيء عليه"],
+                    correct: 0
+                }
+            ],
+            
+            // أسئلة اليوم العاشر
+            10: [
+                {
+                    question: "ما هو حكم صيام المرأة الحائض في رمضان؟",
+                    options: ["يجب عليها الصيام", "يحرم عليها الصيام مع وجوب القضاء", "يجوز لها الصيام", "تطعم عن كل يوم مسكيناً"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم صيام المرأة النفساء في رمضان؟",
+                    options: ["يجب عليها الصيام", "يحرم عليها الصيام مع وجوب القضاء", "يجوز لها الصيام", "تطعم عن كل يوم مسكيناً"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم صيام المرأة الحامل إذا خافت على نفسها أو جنينها؟",
+                    options: ["يجب عليها الصيام", "يجوز لها الفطر
+                {
+                    question: "ما هو حكم صيام المرأة الحامل إذا خافت على نفسها أو جنينها؟",
+                    options: ["يجب عليها الصيام", "يجوز لها الفطر مع القضاء فقط", "يجوز لها الفطر مع القضاء والفدية", "يجوز لها الفطر مع الفدية فقط"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم صيام المرأة المرضع إذا خافت على نفسها أو رضيعها؟",
+                    options: ["يجب عليها الصيام", "يجوز لها الفطر مع القضاء فقط", "يجوز لها الفطر مع القضاء والفدية", "يجوز لها الفطر مع الفدية فقط"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم من أكل أو شرب شاكاً في طلوع الفجر؟",
+                    options: ["صومه صحيح", "صومه باطل", "عليه القضاء", "عليه الكفارة"],
+                    correct: 0
+                }
+            ],
+            
+            // أسئلة اليوم الحادي عشر
+            11: [
+                {
+                    question: "ما هو حكم صيام يوم السبت منفرداً؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم صيام الدهر (صيام الأيام كلها)؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو أفضل الصيام بعد رمضان؟",
+                    options: ["صيام يوم وإفطار يوم", "صيام الاثنين والخميس", "صيام ثلاثة أيام من كل شهر", "صيام الست من شوال"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو حكم صيام يوم الجمعة منفرداً؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم صيام أيام التشريق (11-12-13 من ذي الحجة)؟",
+                    options: ["واجب", "مستحب", "مكروه", "حرام إلا للمتمتع الذي لم يجد الهدي"],
+                    correct: 3
+                }
+            ],
+            
+            // أسئلة اليوم الثاني عشر
+            12: [
+                {
+                    question: "ما هو الشهر الذي يسبق رمضان مباشرة؟",
+                    options: ["رجب", "شعبان", "جمادى الآخرة", "ذو القعدة"],
+                    correct: 1
+                },
+                {
+                    question: "ما هي السنة التي فرض فيها صيام رمضان؟",
+                    options: ["السنة الأولى للهجرة", "السنة الثانية للهجرة", "السنة الثالثة للهجرة", "السنة الرابعة للهجرة"],
+                    correct: 1
+                },
+                {
+                    question: "كم عدد المرات التي ذكر فيها شهر رمضان صراحة في القرآن الكريم؟",
+                    options: ["مرة واحدة", "مرتان", "ثلاث مرات", "أربع مرات"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو اسم الشهر الذي كان يسمى به شهر رمضان في الجاهلية؟",
+                    options: ["ناتق", "وهاد", "ناطل", "ناصل"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو معنى كلمة رمضان في اللغة؟",
+                    options: ["البرد الشديد", "الحر الشديد", "المطر الشديد", "الريح الشديدة"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم الثالث عشر
+            13: [
+                {
+                    question: "ما هو حكم الاعتكاف في العشر الأواخر من رمضان؟",
+                    options: ["واجب", "فرض", "سنة", "مكروه"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو أقل مدة للاعتكاف؟",
+                    options: ["يوم وليلة", "ثلاثة أيام", "عشرة أيام", "لا حد لأقله"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم خروج المعتكف من المسجد لغير حاجة؟",
+                    options: ["جائز", "مكروه", "حرام", "يبطل الاعتكاف"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم الاعتكاف في غير المساجد الثلاثة؟",
+                    options: ["جائز في أي مسجد تقام فيه الجماعة", "جائز في المسجد الجامع فقط", "غير جائز مطلقاً", "واجب"],
+                    correct: 0
+                },
+                {
+                    question: "ما هو حكم اشتراط المعتكف الخروج من اعتكافه لحاجة؟",
+                    options: ["جائز", "مكروه", "حرام", "يبطل الاعتكاف"],
+                    correct: 0
+                }
+            ],
+            
+            // أسئلة اليوم الرابع عشر
+            14: [
+                {
+                    question: "ما هو حكم قراءة القرآن في رمضان؟",
+                    options: ["واجب", "فرض", "سنة مؤكدة", "مكروه"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم ختم القرآن في رمضان؟",
+                    options: ["واجب", "فرض", "سنة", "مستحب"],
+                    correct: 3
+                },
+                {
+                    question: "كم مرة ختم النبي صلى الله عليه وسلم القرآن في رمضان؟",
+                    options: ["مرة واحدة", "مرتين", "ثلاث مرات", "أكثر من ذلك"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم الصدقة في رمضان؟",
+                    options: ["واجبة", "فرض", "سنة مؤكدة", "مكروهة"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو أفضل وقت لختم القرآن في رمضان؟",
+                    options: ["في النهار", "في الليل", "في صلاة التراويح", "لا فرق"],
+                    correct: 1
+                }
+            ],
+            
+            // أسئلة اليوم الخامس عشر
+            15: [
+                {
+                    question: "ما هو حكم العمرة في رمضان؟",
+                    options: ["واجبة", "فرض", "سنة مؤكدة", "تعدل حجة"],
+                    correct: 3
+                },
+                {
+                    question: "ما هو حكم السفر في رمضان؟",
+                    options: ["حرام", "مكروه", "جائز", "واجب"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم من سافر في رمضان بقصد الفطر؟",
+                    options: ["جائز", "مكروه", "حرام", "عليه القضاء والكفارة"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو حكم من نوى الصيام ثم سافر في أثناء النهار؟",
+                    options: ["يجب عليه إتمام الصوم", "يجوز له الفطر", "يحرم عليه الفطر", "عليه القضاء والكفارة"],
+                    correct: 1
+                },
+                {
+                    question: "ما هو حكم من أفطر في بلده ثم سافر في أثناء النهار؟",
+                    options: ["صومه صحيح", "صومه باطل وعليه القضاء فقط", "صومه باطل وعليه القضاء والكفارة", "لا شيء عليه"],
+                    correct: 2
+                }
+            ]
+        };
+        
+        // حالة اللعبة
+        const gameState = {
+            playerName: '',
+            questions: [],
+            currentQuestion: 0,
+            score: 0,
+            timer: null,
+            timeLeft: 10,
+            answers: []
+        };
+        
+        // تحديث التاريخ والوقت
+        function updateDateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = now.toLocaleDateString('ar-SA', options);
+            
+            document.getElementById('date-display').textContent = dateStr;
+            document.getElementById('date-display-out').textContent = dateStr;
+            document.getElementById('date-display-participated').textContent = dateStr;
+        }
+        
+        // التحقق من وقت المسابقة
+        function checkQuizTime() {
+            // للتحقق مما إذا كان الوقت الحالي ضمن نطاق المسابقة
+            const config = quizTimeConfig();
+            
+            // تحويل أوقات البدء والانتهاء إلى دقائق منذ منتصف الليل
+            const [startHour, startMinute] = config.startTime.split(":").map(Number);
+            const [endHour, endMinute] = config.endTime.split(":").map(Number);
+            
+            const startTotalMinutes = startHour * 60 + startMinute;
+            const endTotalMinutes = endHour * 60 + endMinute;
+            
+            // الحصول على الوقت الحالي
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTotalMinutes = currentHour * 60 + currentMinute;
+            
+            // التحقق مما إذا كان الوقت الحالي ضمن نطاق المسابقة
+            return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
+        }
+        
+        // تحديث رسالة الوقت
+        function updateTimeMessage() {
+            const config = quizTimeConfig();
+            document.getElementById('time-message').textContent = `المسابقة متاحة يومياً من الساعة ${config.startTime} صباحاً حتى ${config.startTime} صباحاً`;
+        }
+        
+        // تسجيل المشاركة محلياً
+        function recordLocalParticipation() {
+            const data = `${gameState.playerName}_${new Date().toDateString()}`;
+            localStorage.setItem('lastParticipation', btoa(data));
+        }
+        
+        // التحقق من المشاركة السابقة
+        function checkLocalParticipation() {
+            const lastParticipation = localStorage.getItem('lastParticipation');
+            if (!lastParticipation) return false;
+            
+            try {
+                const decoded = atob(lastParticipation);
+                const parts = decoded.split('_');
+                const date = parts[1];
+                
+                // التحقق من أن المشاركة كانت في نفس اليوم
+                return date === new Date().toDateString();
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // بدء العد التنازلي
+        function startCountdown() {
+            elements.countdownScreen.classList.remove('hidden');
+            
+            const countdownNumber = document.getElementById('countdown-number');
+            const countdownCircle = document.querySelector('.countdown-circle');
+            const countdownText = document.getElementById('countdown-text');
+            
+            let count = 3;
+            countdownNumber.textContent = count;
+            
+            const circumference = 2 * Math.PI * 45;
+            countdownCircle.style.strokeDasharray = circumference;
+            countdownCircle.style.strokeDashoffset = 0;
+            
+            const interval = setInterval(() => {
+                count--;
+                
+                if (count >= 0) {
+                    countdownNumber.textContent = count;
+                    countdownCircle.style.strokeDashoffset = circumference * (1 - count / 3);
+                    
+                    if (count === 0) {
+                        countdownText.textContent = "ابدأ!";
+                    }
+                } else {
+                    clearInterval(interval);
+                    elements.countdownScreen.classList.add('hidden');
+                    startGame();
+                }
+            }, 1000);
+        }
+        
+        // بدء اللعبة
+        function startGame() {
+            elements.quizScreen.classList.remove('hidden');
+            loadQuestion();
+        }
+        
+        // تحميل السؤال
+        function loadQuestion() {
+            const question = gameState.questions[gameState.currentQuestion];
+            
+            elements.questionCounter.textContent = `السؤال ${gameState.currentQuestion + 1} من ${gameState.questions.length}`;
+            elements.questionText.textContent = question.question;
+            
+            // إنشاء خيارات الإجابة
+            elements.optionsContainer.innerHTML = '';
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-right p-4 rounded-lg border border-blue-500/30 bg-white/5 hover:bg-white/10 transition';
+                button.textContent = option;
+                button.dataset.index = index;
+                button.addEventListener('click', selectAnswer);
+                elements.optionsContainer.appendChild(button);
+            });
+            
+            // بدء المؤقت
+            gameState.timeLeft = 10;
+            elements.timer.textContent = gameState.timeLeft;
+            elements.timerBar.style.width = '100%';
+            
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+            }
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                elements.timer.textContent = gameState.timeLeft;
+                elements.timerBar.style.width = `${gameState.timeLeft * 10}%`;
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+        
+        // اختيار الإجابة
+        function selectAnswer(event) {
+            clearInterval(gameState.timer);
+            
+            const selectedIndex = parseInt(event.target.dataset.index);
+            const question = gameState.questions[gameState.currentQuestion];
+            const isCorrect = selectedIndex === question.correct;
+            
+            // تسجيل الإجابة
+            gameState.answers.push({
+                question: question.question,
+                selectedAnswer: question.options[selectedIndex],
+                correctAnswer: question.options[question.correct],
+                isCorrect: isCorrect
+            });
+            
+            // تحديث النتيجة
+            if (isCorrect) {
+                gameState.score++;
+            }
+            
+            // تمييز الإجابة الصحيحة والخاطئة
+            const options = elements.optionsContainer.querySelectorAll('button');
+            options.forEach(option => {
+                const optionIndex = parseInt(option.dataset.index);
+                option.classList.add('option-disabled');
+                
+                if (optionIndex === question.correct) {
+                    option.classList.add('option-correct');
+                } else if (optionIndex === selectedIndex && !isCorrect) {
+                    option.classList.add('option-wrong');
+                }
+            });
+            
+            // الانتقال إلى السؤال التالي بعد ثانيتين
+            setTimeout(() => {
+                nextQuestion();
+            }, 2000);
+        }
+        
+        // انتهاء الوقت
+        function handleTimeout() {
+            const question = gameState.questions[gameState.currentQuestion];
+            
+            // تسجيل الإجابة كخاطئة
+            gameState.answers.push({
+                question: question.question,
+                selectedAnswer: 'لم يتم الإجابة',
+                correctAnswer: question.options[question.correct],
+                isCorrect: false
+            });
+            
+            // تمييز الإجابة الصحيحة
+            const options = elements.optionsContainer.querySelectorAll('button');
+            options.forEach(option => {
+                const optionIndex = parseInt(option.dataset.index);
+                option.classList.add('option-disabled');
+                
+                if (optionIndex === question.correct) {
+                    option.classList.add('option-correct');
+                }
+            });
+            
+            // الانتقال إلى السؤال التالي بعد ثانيتين
+            setTimeout(() => {
+                nextQuestion();
+            }, 2000);
+        }
+        
+        // الانتقال إلى السؤال التالي
+        function nextQuestion() {
+            gameState.currentQuestion++;
+            
+            if (gameState.currentQuestion < gameState.questions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+        
+        // إنهاء اللعبة
+        function endGame() {
+            elements.quizScreen.classList.add('hidden');
+            elements.resultsScreen.classList.remove('hidden');
+            
+            // عرض النتيجة النهائية
+            document.getElementById('final-name').textContent = `الاسم: ${gameState.playerName}`;
+            document.getElementById('final-score').textContent = `النتيجة: ${gameState.score} من ${gameState.questions.length}`;
+            
+            // عرض مراجعة الإجابات
+            const answersReview = document.getElementById('answers-review');
+            answersReview.innerHTML = '';
+            
+            gameState.answers.forEach((answer, index) => {
+                const answerElement = document.createElement('div');
+                answerElement.className = 'bg-white/5 p-4 rounded-lg';
+                
+                const questionElement = document.createElement('h4');
+                questionElement.className = 'font-bold mb-2';
+                questionElement.textContent = `${index + 1}. ${answer.question}`;
+                
+                const yourAnswerElement = document.createElement('p');
+                yourAnswerElement.className = answer.isCorrect ? 'text-green-400' : 'text-red-400';
+                yourAnswerElement.textContent = `إجابتك: ${answer.selectedAnswer}`;
+                
+                const correctAnswerElement = document.createElement('p');
+                correctAnswerElement.className = 'text-blue-400';
+                correctAnswerElement.textContent = `الإجابة الصحيحة: ${answer.correctAnswer}`;
+                
+                answerElement.appendChild(questionElement);
+                answerElement.appendChild(yourAnswerElement);
+                
+                if (!answer.isCorrect) {
+                    answerElement.appendChild(correctAnswerElement);
+                }
+                
+                answersReview.appendChild(answerElement);
+            });
+            
+            // تسجيل النتيجة في Firebase
+            try {
+                db.collection('results').add({
+                    playerName: gameState.playerName,
+                    score: gameState.score,
+                    totalQuestions: gameState.questions.length,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error('Error saving results to Firebase:', error);
+            }
+        }
+        
+        // بدء المسابقة
+        async function startQuiz() {
+            try {
+                gameState.playerName = elements.playerNameInput.value.trim();
+                
+                // تسجيل المشاركة محلياً
+                recordLocalParticipation();
+                
+                // تسجيل المشارك في Firebase للإحصائيات فقط
+                try {
+                    await db.collection('participants').add({
+                        playerName: gameState.playerName,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error recording participation in Firebase:', error);
+                    // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
+                }
+                
+                // تحديد اليوم الحالي من رمضان (يمكن تعديله حسب اليوم الفعلي)
+                const currentRamadanDay = 15; // اليوم الخامس عشر من رمضان (مثال)
+                
+                // التحقق من وجود أسئلة لليوم الحالي
+                if (!ramadanQuestions[currentRamadanDay]) {
+                    console.error('لا توجد أسئلة لهذا اليوم');
+                    alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
+                    return;
+                }
+                
+                // تحديث بنك الأسئلة باستخدام أسئلة اليوم الحالي
+                gameState.questions = [...ramadanQuestions[currentRamadanDay]];
+                
+                elements.startScreen.classList.add('hidden');
+                elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
+                
+                startCountdown();
+            } catch (error) {
+                console.error('Error starting quiz:', error);
+                alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
+            }
+        }
+        
+        // تهيئة المسابقة
+        function initializeQuiz() {
+            try {
+                updateDateTime();
+                
+                // التحقق من وقت المسابقة
+                if (checkQuizTime()) {
+                    // التحقق من المشاركة السابقة
+                    if (checkLocalParticipation()) {
+                        elements.alreadyParticipatedScreen.classList.remove('hidden');
+                    } else {
+                        elements.startScreen.classList.remove('hidden');
+                    }
+                } else {
+                    elements.outOfTimeScreen.classList.remove('hidden');
+                    updateTimeMessage();
+                }
+            } catch (error) {
+                console.error('Error initializing quiz:', error);
+                alert('حدث خطأ في تحميل المسابقة. يرجى تحديث الصفحة.');
+            }
+        }
+        
+        // إضافة مستمعي الأحداث
+        document.addEventListener('DOMContentLoaded', () => {
+            // تهيئة أيقونات Lucide
+            lucide.createIcons();
+            
+            // تحقق من حقل الاسم
+            elements.playerNameInput.addEventListener('input', () => {
+                elements.startButton.disabled = elements.playerNameInput.value.trim() === '';
+            });
+            
+            // زر بدء المسابقة
+            elements.startButton.addEventListener('click', startQuiz);
+            
+            // تهيئة المسابقة
+            initializeQuiz();
+        });
+    </script>
+</body>
+</html>
