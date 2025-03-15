@@ -197,18 +197,30 @@
             appId: "1:627027376760:web:c6c1ca8b0f7c1e1a8b8e8a"
         };
         
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log("تم تهيئة Firebase بنجاح");
+        } catch (error) {
+            console.error("خطأ في تهيئة Firebase:", error);
+        }
         
         // دالة تحديد وقت المسابقة (قم بتعديل هذه الدالة فقط للتحكم في وقت المسابقة)
         function quizTimeConfig() {
+            // للاختبار: جعل المسابقة متاحة طوال اليوم
             return {
-                // وقت بدء المسابقة (الساعة:الدقيقة)
+                startTime: "00:00",  // من منتصف الليل
+                endTime: "23:59"     // حتى نهاية اليوم
+            };
+            
+            // بعد الاختبار، أعد الكود إلى:
+            /*
+            return {
                 startTime: "06:15",
-                
-                // وقت انتهاء المسابقة (الساعة:الدقيقة)
                 endTime: "07:10"
             };
+            */
         }
 
         // العناصر
@@ -503,12 +515,12 @@
                 },
                 {
                     question: "ما هو حكم صيام المرأة النفساء في رمضان؟",
+                    options: ["يجب عليها الصيام", "يحرم عليها الصيام مع وجوب القض
+                {
+                    question: "ما هو حكم صيام المرأة النفساء في رمضان؟",
                     options: ["يجب عليها الصيام", "يحرم عليها الصيام مع وجوب القضاء", "يجوز لها الصيام", "تطعم عن كل يوم مسكيناً"],
                     correct: 1
                 },
-                {
-                    question: "ما هو حكم صيام المرأة الحامل إذا خافت على نفسها أو جنينها؟",
-                    options: ["يجب عليها الصيام", "يجوز لها الفطر
                 {
                     question: "ما هو حكم صيام المرأة الحامل إذا خافت على نفسها أو جنينها؟",
                     options: ["يجب عليها الصيام", "يجوز لها الفطر مع القضاء فقط", "يجوز لها الفطر مع القضاء والفدية", "يجوز لها الفطر مع الفدية فقط"],
@@ -712,6 +724,10 @@
             const currentMinute = now.getMinutes();
             const currentTotalMinutes = currentHour * 60 + currentMinute;
             
+            console.log(`الوقت الحالي: ${currentHour}:${currentMinute}`);
+            console.log(`وقت البدء: ${startHour}:${startMinute}`);
+            console.log(`وقت الانتهاء: ${endHour}:${endMinute}`);
+            
             // التحقق مما إذا كان الوقت الحالي ضمن نطاق المسابقة
             return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
         }
@@ -719,7 +735,7 @@
         // تحديث رسالة الوقت
         function updateTimeMessage() {
             const config = quizTimeConfig();
-            document.getElementById('time-message').textContent = `المسابقة متاحة يومياً من الساعة ${config.startTime} صباحاً حتى ${config.startTime} صباحاً`;
+            document.getElementById('time-message').textContent = `المسابقة متاحة يومياً من الساعة ${config.startTime} حتى الساعة ${config.endTime}`;
         }
         
         // تسجيل المشاركة محلياً
@@ -944,12 +960,20 @@
             
             // تسجيل النتيجة في Firebase
             try {
-                db.collection('results').add({
-                    playerName: gameState.playerName,
-                    score: gameState.score,
-                    totalQuestions: gameState.questions.length,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                if (db) {
+                    db.collection('results').add({
+                        playerName: gameState.playerName,
+                        score: gameState.score,
+                        totalQuestions: gameState.questions.length,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => {
+                        console.log("تم تسجيل النتيجة بنجاح");
+                    }).catch(error => {
+                        console.error("خطأ في تسجيل النتيجة:", error);
+                    });
+                } else {
+                    console.warn("Firebase غير متاح، لم يتم تسجيل النتيجة");
+                }
             } catch (error) {
                 console.error('Error saving results to Firebase:', error);
             }
@@ -965,10 +989,15 @@
                 
                 // تسجيل المشارك في Firebase للإحصائيات فقط
                 try {
-                    await db.collection('participants').add({
-                        playerName: gameState.playerName,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    if (db) {
+                        await db.collection('participants').add({
+                            playerName: gameState.playerName,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log("تم تسجيل المشاركة بنجاح");
+                    } else {
+                        console.warn("Firebase غير متاح، لم يتم تسجيل المشاركة");
+                    }
                 } catch (error) {
                     console.error('Error recording participation in Firebase:', error);
                     // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
@@ -1000,19 +1029,29 @@
         // تهيئة المسابقة
         function initializeQuiz() {
             try {
+                console.log("تهيئة المسابقة...");
                 updateDateTime();
                 
                 // التحقق من وقت المسابقة
-                if (checkQuizTime()) {
+                const isQuizTime = checkQuizTime();
+                console.log("هل الوقت ضمن وقت المسابقة؟", isQuizTime);
+                
+                if (isQuizTime) {
                     // التحقق من المشاركة السابقة
-                    if (checkLocalParticipation()) {
+                    const hasParticipated = checkLocalParticipation();
+                    console.log("هل تمت المشاركة مسبقاً؟", hasParticipated);
+                    
+                    if (hasParticipated) {
                         elements.alreadyParticipatedScreen.classList.remove('hidden');
+                        console.log("تم عرض شاشة المشاركة السابقة");
                     } else {
                         elements.startScreen.classList.remove('hidden');
+                        console.log("تم عرض شاشة البداية");
                     }
                 } else {
                     elements.outOfTimeScreen.classList.remove('hidden');
                     updateTimeMessage();
+                    console.log("تم عرض شاشة خارج وقت المسابقة");
                 }
             } catch (error) {
                 console.error('Error initializing quiz:', error);
@@ -1022,8 +1061,15 @@
         
         // إضافة مستمعي الأحداث
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("تم تحميل الصفحة");
+            
             // تهيئة أيقونات Lucide
-            lucide.createIcons();
+            try {
+                lucide.createIcons();
+                console.log("تم تهيئة أيقونات Lucide");
+            } catch (error) {
+                console.error("خطأ في تهيئة أيقونات Lucide:", error);
+            }
             
             // تحقق من حقل الاسم
             elements.playerNameInput.addEventListener('input', () => {
