@@ -210,9 +210,9 @@
                 </div>
             </div>
         </div>
-    </div> 
+    </div>
     <script>
-             // تهيئة Firebase
+        // تهيئة Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyC5RYK1lGaJaMQJmOH85cqNgv6m7rbLS_A",
             authDomain: "ramadanmotaz-5570f.firebaseapp.com",
@@ -232,10 +232,8 @@
         } catch (error) {
             console.error('Error initializing Firebase:', error);
         }
-
-                
-                
-                // بنك الأسئلة
+        
+        // بنك الأسئلة
         const ramadanQuestions = {
             15: [ // اليوم 15 من رمضان
                 {
@@ -480,7 +478,7 @@
                     correct: 2
                 },
                 {
-                                        question: "من هو الصحابي الذي لقب بـ «أمين الأمة»؟",
+                    question: "من هو الصحابي الذي لقب بـ «أمين الأمة»؟",
                     options: ["أبو هريرة", "أبو عبيدة بن الجراح", "معاذ بن جبل", "زيد بن ثابت"],
                     correct: 1
                 },
@@ -659,13 +657,8 @@
             ]
         };
         
-        
-        
-        
-
-
-// بنك الأسئلة المتاح
-let questionBank = [];
+        // بنك الأسئلة المتاح
+        let questionBank = [];
 
         // حالة اللعبة
         const gameState = {
@@ -699,24 +692,17 @@ let questionBank = [];
             outOfTimeScreen: document.getElementById('out-of-time-screen'),
             alreadyParticipatedScreen: document.getElementById('already-participated-screen')
         };
-
-
-
-
-
-
-
         
         // ===== الجزء الأول: متغيرات التحكم وإعدادات المسابقة =====
 
         // وضع المسابقة: "auto" للتوقيت التلقائي، "always" لتكون متاحة دائمًا، "never" لتكون غير متاحة دائمًا
-        const QUIZ_MODE = "auto"; 
+        const QUIZ_MODE = "always"; // للاختبار، يمكن تغييره إلى "auto" لاحقاً
 
         // أوقات المسابقة (بالساعات والدقائق - نظام 24 ساعة)
-        const QUIZ_START_HOUR = 15;    // 5 مساءً
-        const QUIZ_START_MINUTE = 07;  // 30 دقيقة
-        const QUIZ_END_HOUR = 15;      // 6 مساءً
-        const QUIZ_END_MINUTE = 15;    // 00 دقيقة
+        const QUIZ_START_HOUR = 15;    // 3 مساءً
+        const QUIZ_START_MINUTE = 07;  // 07 دقيقة
+        const QUIZ_END_HOUR = 15;      // 3 مساءً
+        const QUIZ_END_MINUTE = 15;    // 15 دقيقة
 
         // ===== الجزء الثاني: الدوال والمنطق البرمجي =====
 
@@ -783,61 +769,47 @@ let questionBank = [];
                 };
             }
         }
-
-
-
-
-
-
-
         
         // دوال التحقق والتخزين المحلي
         function simpleEncrypt(text) {
             return btoa(text + '_' + new Date().toDateString());
         }
 
-    function checkLocalParticipation() {
-    try {
-        // الحصول على مفتاح المشاركة السابقة من التخزين المحلي
-        const lastParticipation = localStorage.getItem('lastParticipation');
-        
-        if (!lastParticipation) {
-            // لم يشارك من قبل
-            return false;
+        function checkLocalParticipation() {
+            try {
+                // الحصول على مفتاح المشاركة السابقة من التخزين المحلي
+                const lastParticipation = localStorage.getItem('lastParticipation');
+                
+                if (!lastParticipation) {
+                    // لم يشارك من قبل
+                    return false;
+                }
+                
+                // فك تشفير المفتاح
+                const decoded = atob(lastParticipation);
+                const parts = decoded.split('_');
+                
+                if (parts.length !== 2) {
+                    // تنسيق غير صالح، نعتبر أنه لم يشارك
+                    return false;
+                }
+                
+                // الحصول على تاريخ المشاركة السابقة
+                const lastParticipationDate = new Date(parts[1]);
+                const today = new Date();
+                
+                // التحقق مما إذا كانت المشاركة السابقة في نفس اليوم
+                return (
+                    lastParticipationDate.getDate() === today.getDate() &&
+                    lastParticipationDate.getMonth() === today.getMonth() &&
+                    lastParticipationDate.getFullYear() === today.getFullYear()
+                );
+            } catch (error) {
+                console.error('Error checking participation:', error);
+                // في حالة حدوث خطأ، نسمح بالمشاركة
+                return false;
+            }
         }
-        
-        // فك تشفير المفتاح
-        const decoded = atob(lastParticipation);
-        const parts = decoded.split('_');
-        
-        if (parts.length !== 2) {
-            // تنسيق غير صالح، نعتبر أنه لم يشارك
-            return false;
-        }
-        
-        // الحصول على تاريخ المشاركة السابقة
-        const lastParticipationDate = new Date(parts[1]);
-        const today = new Date();
-        
-        // التحقق مما إذا كانت المشاركة السابقة في نفس اليوم
-        return (
-            lastParticipationDate.getDate() === today.getDate() &&
-            lastParticipationDate.getMonth() === today.getMonth() &&
-            lastParticipationDate.getFullYear() === today.getFullYear()
-        );
-    } catch (error) {
-        console.error('Error checking participation:', error);
-        // في حالة حدوث خطأ، نسمح بالمشاركة
-        return false;
-    }
-}
-    
-
-
-
-
-
-        
 
         function recordLocalParticipation() {
             const participationKey = simpleEncrypt('participated');
@@ -915,81 +887,65 @@ let questionBank = [];
             lucide.createIcons();
         }
 
+        // معالجة الإجابة - النسخة المصححة
+        function handleAnswer(selectedOption) {
+            // التحقق من أن السؤال لم تتم الإجابة عليه بالفعل
+            if (gameState.isAnswered) return;
+            gameState.isAnswered = true;
+            
+            // إيقاف المؤقت
+            clearInterval(gameState.timer);
+            
+            // حساب وقت الإجابة
+            const answerTime = (Date.now() - gameState.questionStartTime) / 1000;
+            gameState.questionTimes.push(answerTime);
+            
+            const question = gameState.questions[gameState.currentQuestion];
+            
+            // التعامل مع حالة انتهاء الوقت (selectedOption = -1)
+            const isCorrect = selectedOption >= 0 && selectedOption === question.correct;
+            
+            // حساب النقاط بناءً على سرعة الإجابة
+            let points = 0;
+            if (isCorrect) {
+                if (answerTime <= 3) points = 100;
+                else if (answerTime <= 5) points = 80;
+                else if (answerTime <= 7) points = 60;
+                else points = 40;
+            }
+            
+            // إضافة النقاط والوقت إلى المجموع
+            gameState.score += points;
+            gameState.totalTime += answerTime;
 
+            // تعطيل جميع الخيارات
+            const options = elements.optionsContainer.children;
+            Array.from(options).forEach(option => {
+                option.classList.add('option-disabled');
+            });
+            
+            // إضافة التأثيرات البصرية للإجابة الصحيحة والخاطئة
+            if (selectedOption >= 0) {
+                options[selectedOption].classList.add(isCorrect ? 'option-correct' : 'option-wrong');
+            }
+            
+            // إظهار الإجابة الصحيحة دائماً
+            if (!isCorrect) {
+                options[question.correct].classList.add('option-correct');
+            }
 
-        // استبدل دالة handleAnswer بهذه النسخة المصححة
-function handleAnswer(selectedOption) {
-    // التحقق من أن السؤال لم تتم الإجابة عليه بالفعل
-    if (gameState.isAnswered) return;
-    gameState.isAnswered = true;
-    
-    // إيقاف المؤقت
-    clearInterval(gameState.timer);
-    
-    // حساب وقت الإجابة
-    const answerTime = (Date.now() - gameState.questionStartTime) / 1000;
-    gameState.questionTimes.push(answerTime);
-    
-    const question = gameState.questions[gameState.currentQuestion];
-    
-    // التعامل مع حالة انتهاء الوقت (selectedOption = -1)
-    const isCorrect = selectedOption >= 0 && selectedOption === question.correct;
-    
-    // حساب النقاط بناءً على سرعة الإجابة
-    let points = 0;
-    if (isCorrect) {
-        if (answerTime <= 3) points = 100;
-        else if (answerTime <= 5) points = 80;
-        else if (answerTime <= 7) points = 60;
-        else points = 40;
-    }
-    
-    // إضافة النقاط والوقت إلى المجموع
-    gameState.score += points;
-    gameState.totalTime += answerTime;
+            // تخزين معلومات الإجابة
+            gameState.answers.push({
+                question: question.question,
+                selectedAnswer: selectedOption >= 0 ? question.options[selectedOption] : "لم يتم الإجابة",
+                correctAnswer: question.options[question.correct],
+                isCorrect: isCorrect,
+                time: answerTime,
+                points: points
+            });
 
-    // تعطيل جميع الخيارات
-    const options = elements.optionsContainer.children;
-    Array.from(options).forEach(option => {
-        option.classList.add('option-disabled');
-    });
-    
-    // إضافة التأثيرات البصرية للإجابة الصحيحة والخاطئة
-    if (selectedOption >= 0) {
-        options[selectedOption].classList.add(isCorrect ? 'option-correct' : 'option-wrong');
-    }
-    
-    // إظهار الإجابة الصحيحة دائماً
-    if (!isCorrect) {
-        options[question.correct].classList.add('option-correct');
-    }
-
-    // تخزين معلومات الإجابة
-    gameState.answers.push({
-        question: question.question,
-        selectedAnswer: selectedOption >= 0 ? question.options[selectedOption] : "لم يتم الإجابة",
-        correctAnswer: question.options[question.correct],
-        isCorrect: isCorrect,
-        time: answerTime,
-        points: points
-    });
-
-    // الانتقال إلى السؤال التالي أو إظهار النتائج بعد فترة قصيرة
-    setTimeout(() => {
-        if (gameState.currentQuestion < gameState.questions.length - 1) {
-            gameState.currentQuestion++;
-            showQuestion();
-        } else {
-            showResults();
-        }
-    }, 1500);
-}
-
-
-
-
-        
-        meout(() => {
+            // الانتقال إلى السؤال التالي أو إظهار النتائج بعد فترة قصيرة
+            setTimeout(() => {
                 if (gameState.currentQuestion < gameState.questions.length - 1) {
                     gameState.currentQuestion++;
                     showQuestion();
@@ -1070,81 +1026,69 @@ function handleAnswer(selectedOption) {
             }
         }
 
-
-
-
-
-
-// بدء المسابقة
-async function startQuiz() {
-    try {
-        // التحقق من المشاركة السابقة
-        if (checkLocalParticipation()) {
-            // المستخدم شارك بالفعل اليوم
-            elements.startScreen.classList.add('hidden');
-            elements.alreadyParticipatedScreen.classList.remove('hidden');
-            return;
+        // بدء المسابقة
+        async function startQuiz() {
+            try {
+                // التحقق من المشاركة السابقة
+                if (checkLocalParticipation()) {
+                    // المستخدم شارك بالفعل اليوم
+                    elements.startScreen.classList.add('hidden');
+                    elements.alreadyParticipatedScreen.classList.remove('hidden');
+                    return;
+                }
+                
+                gameState.playerName = elements.playerNameInput.value.trim();
+                
+                // تسجيل المشاركة محلياً
+                recordLocalParticipation();
+                
+                // تسجيل المشارك في Firebase للإحصائيات فقط
+                try {
+                    await db.collection('participants').add({
+                        playerName: gameState.playerName,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error recording participation in Firebase:', error);
+                    // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
+                }
+                
+                // تحديد اليوم الحالي من الشهر
+                const today = new Date();
+                const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
+                
+                // تحديد اليوم المناسب من بنك الأسئلة
+                // إذا كان اليوم أكبر من 29، نستخدم اليوم 29 (آخر يوم في بنك الأسئلة)
+                // إذا كان اليوم أقل من 15، نستخدم اليوم 15 (أول يوم في بنك الأسئلة)
+                let questionDay = currentDay;
+                
+                if (questionDay > 29) {
+                    questionDay = 29; // آخر يوم في بنك الأسئلة
+                } else if (questionDay < 15) {
+                    questionDay = 15; // أول يوم في بنك الأسئلة
+                }
+                
+                console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
+                
+                // التحقق من وجود أسئلة لليوم المحدد
+                if (!ramadanQuestions[questionDay])
+                                        console.error(`لا توجد أسئلة لليوم ${questionDay}`);
+                    alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
+                    return;
+                }
+                
+                // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
+                gameState.questions = [...ramadanQuestions[questionDay]];
+                
+                elements.startScreen.classList.add('hidden');
+                elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
+                
+                startCountdown();
+            } catch (error) {
+                console.error('Error starting quiz:', error);
+                alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
+            }
         }
-        
-        gameState.playerName = elements.playerNameInput.value.trim();
-        
-        // تسجيل المشاركة محلياً
-        recordLocalParticipation();
-        
-        
-        
-        // تسجيل المشارك في Firebase للإحصائيات فقط
-        try {
-            await db.collection('participants').add({
-                playerName: gameState.playerName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (error) {
-            console.error('Error recording participation in Firebase:', error);
-            // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
-        }
-        
-        // تحديد اليوم الحالي من الشهر
-        const today = new Date();
-        const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
-        
-        // تحديد اليوم المناسب من بنك الأسئلة
-        // إذا كان اليوم أكبر من 29، نستخدم اليوم 29 (آخر يوم في بنك الأسئلة)
-        // إذا كان اليوم أقل من 15، نستخدم اليوم 15 (أول يوم في بنك الأسئلة)
-        let questionDay = currentDay;
-        
-        if (questionDay > 29) {
-            questionDay = 29; // آخر يوم في بنك الأسئلة
-        } else if (questionDay < 15) {
-            questionDay = 15; // أول يوم في بنك الأسئلة
-        }
-        
-        console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
-        
-        // التحقق من وجود أسئلة لليوم المحدد
-        if (!ramadanQuestions[questionDay]) {
-            console.error(`لا توجد أسئلة لليوم ${questionDay}`);
-            alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
-            return;
-        }
-        
-        // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
-        gameState.questions = [...ramadanQuestions[questionDay]];
-        
-        elements.startScreen.classList.add('hidden');
-        elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
-        
-        startCountdown();
-    } catch (error) {
-        console.error('Error starting quiz:', error);
-        alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
-    }
-}
-
-
-
-
-
         
         // تهيئة المسابقة
         function initializeQuiz() {
@@ -1190,3 +1134,4 @@ async function startQuiz() {
     </script>
 </body>
 </html>
+
