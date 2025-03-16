@@ -1026,69 +1026,75 @@
             }
         }
 
+
+        
         // بدء المسابقة
-        async function startQuiz() {
-            try {
-                // التحقق من المشاركة السابقة
-                if (checkLocalParticipation()) {
-                    // المستخدم شارك بالفعل اليوم
-                    elements.startScreen.classList.add('hidden');
-                    elements.alreadyParticipatedScreen.classList.remove('hidden');
-                    return;
-                }
-                
-                gameState.playerName = elements.playerNameInput.value.trim();
-                
-                // تسجيل المشاركة محلياً
-                recordLocalParticipation();
-                
-                // تسجيل المشارك في Firebase للإحصائيات فقط
-                try {
-                    await db.collection('participants').add({
-                        playerName: gameState.playerName,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } catch (error) {
-                    console.error('Error recording participation in Firebase:', error);
-                    // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
-                }
-                
-                // تحديد اليوم الحالي من الشهر
-                const today = new Date();
-                const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
-                
-                // تحديد اليوم المناسب من بنك الأسئلة
-                // إذا كان اليوم أكبر من 29، نستخدم اليوم 29 (آخر يوم في بنك الأسئلة)
-                // إذا كان اليوم أقل من 15، نستخدم اليوم 15 (أول يوم في بنك الأسئلة)
-                let questionDay = currentDay;
-                
-                if (questionDay > 29) {
-                    questionDay = 29; // آخر يوم في بنك الأسئلة
-                } else if (questionDay < 15) {
-                    questionDay = 15; // أول يوم في بنك الأسئلة
-                }
-                
-                console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
-                
-                // التحقق من وجود أسئلة لليوم المحدد
-                if (!ramadanQuestions[questionDay])
-                                        console.error(`لا توجد أسئلة لليوم ${questionDay}`);
-                    alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
-                    return;
-                }
-                
-                // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
-                gameState.questions = [...ramadanQuestions[questionDay]];
-                
-                elements.startScreen.classList.add('hidden');
-                elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
-                
-                startCountdown();
-            } catch (error) {
-                console.error('Error starting quiz:', error);
-                alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
-            }
+async function startQuiz() {
+    try {
+        // التحقق من المشاركة السابقة
+        if (checkLocalParticipation()) {
+            // المستخدم شارك بالفعل اليوم
+            elements.startScreen.classList.add('hidden');
+            elements.alreadyParticipatedScreen.classList.remove('hidden');
+            return;
         }
+        
+        gameState.playerName = elements.playerNameInput.value.trim();
+        
+        // تسجيل المشاركة محلياً
+        recordLocalParticipation();
+        
+        // تسجيل المشارك في Firebase للإحصائيات فقط
+        try {
+            await db.collection('participants').add({
+                playerName: gameState.playerName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error recording participation in Firebase:', error);
+            // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
+        }
+        
+        // تحديد اليوم الحالي من الشهر
+        const today = new Date();
+        const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
+        
+        // تحديد اليوم المناسب من بنك الأسئلة
+        // إذا كان اليوم أكبر من 29، نستخدم اليوم 29 (آخر يوم في بنك الأسئلة)
+        // إذا كان اليوم أقل من 15، نستخدم اليوم 15 (أول يوم في بنك الأسئلة)
+        let questionDay = currentDay;
+        
+        if (questionDay > 29) {
+            questionDay = 29; // آخر يوم في بنك الأسئلة
+        } else if (questionDay < 15) {
+            questionDay = 15; // أول يوم في بنك الأسئلة
+        }
+        
+        console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
+        
+        // التحقق من وجود أسئلة لليوم المحدد
+        if (!ramadanQuestions[questionDay]) {
+            console.error(`لا توجد أسئلة لليوم ${questionDay}`);
+            alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
+            return;
+        }
+        
+        // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
+        gameState.questions = [...ramadanQuestions[questionDay]];
+        
+        elements.startScreen.classList.add('hidden');
+        elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
+        
+        startCountdown();
+    } catch (error) {
+        console.error('Error starting quiz:', error);
+        alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
+    }
+}
+
+
+
+
         
         // تهيئة المسابقة
         function initializeQuiz() {
