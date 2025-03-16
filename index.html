@@ -574,16 +574,23 @@ let questionBank = [];
             alreadyParticipatedScreen: document.getElementById('already-participated-screen')
         };
 
+
+
+
+
+
+
+        
         // ===== الجزء الأول: متغيرات التحكم وإعدادات المسابقة =====
 
         // وضع المسابقة: "auto" للتوقيت التلقائي، "always" لتكون متاحة دائمًا، "never" لتكون غير متاحة دائمًا
         const QUIZ_MODE = "auto"; 
 
         // أوقات المسابقة (بالساعات والدقائق - نظام 24 ساعة)
-        const QUIZ_START_HOUR = 17;    // 5 مساءً
-        const QUIZ_START_MINUTE = 30;  // 30 دقيقة
-        const QUIZ_END_HOUR = 18;      // 6 مساءً
-        const QUIZ_END_MINUTE = 00;    // 00 دقيقة
+        const QUIZ_START_HOUR = 13;    // 5 مساءً
+        const QUIZ_START_MINUTE = 20;  // 30 دقيقة
+        const QUIZ_END_HOUR = 13;      // 6 مساءً
+        const QUIZ_END_MINUTE = 30;    // 00 دقيقة
 
         // ===== الجزء الثاني: الدوال والمنطق البرمجي =====
 
@@ -651,6 +658,13 @@ let questionBank = [];
             }
         }
 
+
+
+
+
+
+
+        
         // دوال التحقق والتخزين المحلي
         function simpleEncrypt(text) {
             return btoa(text + '_' + new Date().toDateString());
