@@ -587,10 +587,10 @@ let questionBank = [];
         const QUIZ_MODE = "auto"; 
 
         // أوقات المسابقة (بالساعات والدقائق - نظام 24 ساعة)
-        const QUIZ_START_HOUR = 13;    // 5 مساءً
-        const QUIZ_START_MINUTE = 52;  // 30 دقيقة
-        const QUIZ_END_HOUR = 13;      // 6 مساءً
-        const QUIZ_END_MINUTE = 54;    // 00 دقيقة
+        const QUIZ_START_HOUR = 14;    // 5 مساءً
+        const QUIZ_START_MINUTE = 10;  // 30 دقيقة
+        const QUIZ_END_HOUR = 14;      // 6 مساءً
+        const QUIZ_END_MINUTE = 15;    // 00 دقيقة
 
         // ===== الجزء الثاني: الدوال والمنطق البرمجي =====
 
@@ -670,9 +670,48 @@ let questionBank = [];
             return btoa(text + '_' + new Date().toDateString());
         }
 
-        function checkLocalParticipation() {
-            return false; // تعطيل التحقق من المشاركة السابقة
+    function checkLocalParticipation() {
+    try {
+        // الحصول على مفتاح المشاركة السابقة من التخزين المحلي
+        const lastParticipation = localStorage.getItem('lastParticipation');
+        
+        if (!lastParticipation) {
+            // لم يشارك من قبل
+            return false;
         }
+        
+        // فك تشفير المفتاح
+        const decoded = atob(lastParticipation);
+        const parts = decoded.split('_');
+        
+        if (parts.length !== 2) {
+            // تنسيق غير صالح، نعتبر أنه لم يشارك
+            return false;
+        }
+        
+        // الحصول على تاريخ المشاركة السابقة
+        const lastParticipationDate = new Date(parts[1]);
+        const today = new Date();
+        
+        // التحقق مما إذا كانت المشاركة السابقة في نفس اليوم
+        return (
+            lastParticipationDate.getDate() === today.getDate() &&
+            lastParticipationDate.getMonth() === today.getMonth() &&
+            lastParticipationDate.getFullYear() === today.getFullYear()
+        );
+    } catch (error) {
+        console.error('Error checking participation:', error);
+        // في حالة حدوث خطأ، نسمح بالمشاركة
+        return false;
+    }
+}
+    
+
+
+
+
+
+        
 
         function recordLocalParticipation() {
             const participationKey = simpleEncrypt('participated');
@@ -881,10 +920,20 @@ let questionBank = [];
 // بدء المسابقة
 async function startQuiz() {
     try {
+        // التحقق من المشاركة السابقة
+        if (checkLocalParticipation()) {
+            // المستخدم شارك بالفعل اليوم
+            elements.startScreen.classList.add('hidden');
+            elements.alreadyParticipatedScreen.classList.remove('hidden');
+            return;
+        }
+        
         gameState.playerName = elements.playerNameInput.value.trim();
         
-        // تسجيل المشاركة محلياً (تم تعطيل التحقق)
+        // تسجيل المشاركة محلياً
         recordLocalParticipation();
+        
+        
         
         // تسجيل المشارك في Firebase للإحصائيات فقط
         try {
