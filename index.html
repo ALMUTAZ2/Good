@@ -916,48 +916,76 @@ let questionBank = [];
         }
 
         // معالجة الإجابة
-        function handleAnswer(selectedOption) {
-            if (gameState.isAnswered) return;
-            gameState.isAnswered = true;
-            
-            clearInterval(gameState.timer);
-            const answerTime = (Date.now() - gameState.questionStartTime) / 1000;
-            gameState.questionTimes.push(answerTime);
-            
-            const question = gameState.questions[gameState.currentQuestion];
-            const isCorrect = selectedOption === question.correct;
-            
-            let points = 0;
-            if (isCorrect) {
-                if (answerTime <= 3) points = 100;
-                else if (answerTime <= 5) points = 80;
-                else if (answerTime <= 7) points = 60;
-                else points = 40;
-            }
-            
-            gameState.score += points;
-            gameState.totalTime += answerTime;
 
-            const options = elements.optionsContainer.children;
-            Array.from(options).forEach(option => {
-                option.classList.add('option-disabled');
-            });
-            
-            options[selectedOption].classList.add(isCorrect ? 'option-correct' : 'option-wrong');
-            if (!isCorrect) {
-                options[question.correct].classList.add('option-correct');
-            }
+            setTi// معالجة الإجابة - النسخة المصححة
+function handleAnswer(selectedOption) {
+    // التحقق من أن السؤال لم تتم الإجابة عليه بالفعل
+    if (gameState.isAnswered) return;
+    gameState.isAnswered = true;
+    
+    // إيقاف المؤقت
+    clearInterval(gameState.timer);
+    
+    // حساب وقت الإجابة
+    const answerTime = (Date.now() - gameState.questionStartTime) / 1000;
+    gameState.questionTimes.push(answerTime);
+    
+    const question = gameState.questions[gameState.currentQuestion];
+    
+    // التعامل مع حالة انتهاء الوقت (selectedOption = -1)
+    const isCorrect = selectedOption >= 0 && selectedOption === question.correct;
+    
+    // حساب النقاط بناءً على سرعة الإجابة
+    let points = 0;
+    if (isCorrect) {
+        if (answerTime <= 3) points = 100;
+        else if (answerTime <= 5) points = 80;
+        else if (answerTime <= 7) points = 60;
+        else points = 40;
+    }
+    
+    // إضافة النقاط والوقت إلى المجموع
+    gameState.score += points;
+    gameState.totalTime += answerTime;
 
-            gameState.answers.push({
-                question: question.question,
-                selectedAnswer: question.options[selectedOption],
-                correctAnswer: question.options[question.correct],
-                isCorrect: isCorrect,
-                time: answerTime,
-                points: points
-            });
+    // تعطيل جميع الخيارات
+    const options = elements.optionsContainer.children;
+    Array.from(options).forEach(option => {
+        option.classList.add('option-disabled');
+    });
+    
+    // إضافة التأثيرات البصرية للإجابة الصحيحة والخاطئة
+    if (selectedOption >= 0) {
+        options[selectedOption].classList.add(isCorrect ? 'option-correct' : 'option-wrong');
+    }
+    
+    // إظهار الإجابة الصحيحة دائماً
+    if (!isCorrect) {
+        options[question.correct].classList.add('option-correct');
+    }
 
-            setTimeout(() => {
+    // تخزين معلومات الإجابة
+    gameState.answers.push({
+        question: question.question,
+        selectedAnswer: selectedOption >= 0 ? question.options[selectedOption] : "لم يتم الإجابة",
+        correctAnswer: question.options[question.correct],
+        isCorrect: isCorrect,
+        time: answerTime,
+        points: points
+    });
+
+    // الانتقال إلى السؤال التالي أو إظهار النتائج بعد فترة قصيرة
+    setTimeout(() => {
+        if (gameState.currentQuestion < gameState.questions.length - 1) {
+            gameState.currentQuestion++;
+            showQuestion();
+        } else {
+            showResults();
+        }
+    }, 1500);
+}
+
+        meout(() => {
                 if (gameState.currentQuestion < gameState.questions.length - 1) {
                     gameState.currentQuestion++;
                     showQuestion();
