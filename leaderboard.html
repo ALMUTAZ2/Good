@@ -243,7 +243,7 @@
             const minutes = now.getMinutes();
 
             // تعديل الشرط ليظهر النتائج بعد الساعة 18:45 (6:45 مساءً)
-            if (hour > 13 || (hour === 13 && minutes >= 54)) {
+            if (hour > 14 || (hour === 14 && minutes >= 31)) {
                 document.getElementById('waiting-screen').classList.add('hidden');
                 document.getElementById('results-screen').classList.remove('hidden');
                 fetchResults();
