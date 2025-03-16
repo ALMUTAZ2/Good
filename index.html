@@ -713,10 +713,10 @@ let questionBank = [];
         const QUIZ_MODE = "auto"; 
 
         // أوقات المسابقة (بالساعات والدقائق - نظام 24 ساعة)
-        const QUIZ_START_HOUR = 14;    // 5 مساءً
-        const QUIZ_START_MINUTE = 55;  // 30 دقيقة
-        const QUIZ_END_HOUR = 14;      // 6 مساءً
-        const QUIZ_END_MINUTE = 59;    // 00 دقيقة
+        const QUIZ_START_HOUR = 15;    // 5 مساءً
+        const QUIZ_START_MINUTE = 07;  // 30 دقيقة
+        const QUIZ_END_HOUR = 15;      // 6 مساءً
+        const QUIZ_END_MINUTE = 15;    // 00 دقيقة
 
         // ===== الجزء الثاني: الدوال والمنطق البرمجي =====
 
@@ -915,9 +915,9 @@ let questionBank = [];
             lucide.createIcons();
         }
 
-        // معالجة الإجابة
 
-            setTi// معالجة الإجابة - النسخة المصححة
+
+        // استبدل دالة handleAnswer بهذه النسخة المصححة
 function handleAnswer(selectedOption) {
     // التحقق من أن السؤال لم تتم الإجابة عليه بالفعل
     if (gameState.isAnswered) return;
@@ -985,6 +985,10 @@ function handleAnswer(selectedOption) {
     }, 1500);
 }
 
+
+
+
+        
         meout(() => {
                 if (gameState.currentQuestion < gameState.questions.length - 1) {
                     gameState.currentQuestion++;
