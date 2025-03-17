@@ -477,7 +477,7 @@
                     options: ["8 سنوات", "9 سنوات", "10 سنوات", "11 سنة"],
                     correct: 2
                 },
-                {
+                                {
                     question: "من هو الصحابي الذي لقب بـ «أمين الأمة»؟",
                     options: ["أبو هريرة", "أبو عبيدة بن الجراح", "معاذ بن جبل", "زيد بن ثابت"],
                     correct: 1
@@ -699,20 +699,15 @@
 
 
 
-
         
         // وضع المسابقة: "auto" للتوقيت التلقائي، "always" لتكون متاحة دائمًا، "never" لتكون غير متاحة دائمًا
         const QUIZ_MODE = "auto"; // للاختبار، يمكن تغييره إلى "auto" لاحقاً
 
         // أوقات المسابقة (بالساعات والدقائق - نظام 24 ساعة)
-        const QUIZ_START_HOUR = 19;    // 3 مساءً
-        const QUIZ_START_MINUTE = 00;  // 07 دقيقة
-        const QUIZ_END_HOUR = 20;      // 3 مساءً
-        const QUIZ_END_MINUTE = 00;    // 15 دقيقة
-
-
-
-
+        const QUIZ_START_HOUR = 21;    // 7 مساءً
+        const QUIZ_START_MINUTE = 00;  // 00 دقيقة
+        const QUIZ_END_HOUR = 22;      // 8 مساءً
+        const QUIZ_END_MINUTE = 00;    // 00 دقيقة
 
 
 
@@ -783,40 +778,25 @@
             }
         }
         
-        // دوال التحقق والتخزين المحلي
-        function simpleEncrypt(text) {
-            return btoa(text + '_' + new Date().toDateString());
+        // ===== بداية التعديلات الجديدة: تحسين نظام المشاركة اليومية =====
+        
+        // دالة للحصول على تاريخ اليوم بتنسيق YYYY-MM-DD
+        function getFormattedDate() {
+            const now = new Date();
+            return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
         }
 
+        // دالة التحقق من المشاركة اليومية المحسنة
         function checkLocalParticipation() {
             try {
+                // الحصول على تاريخ اليوم بتنسيق YYYY-MM-DD
+                const today = getFormattedDate();
+                
                 // الحصول على مفتاح المشاركة السابقة من التخزين المحلي
-                const lastParticipation = localStorage.getItem('lastParticipation');
+                const participationDate = localStorage.getItem('participationDate');
                 
-                if (!lastParticipation) {
-                    // لم يشارك من قبل
-                    return false;
-                }
-                
-                // فك تشفير المفتاح
-                const decoded = atob(lastParticipation);
-                const parts = decoded.split('_');
-                
-                if (parts.length !== 2) {
-                    // تنسيق غير صالح، نعتبر أنه لم يشارك
-                    return false;
-                }
-                
-                // الحصول على تاريخ المشاركة السابقة
-                const lastParticipationDate = new Date(parts[1]);
-                const today = new Date();
-                
-                // التحقق مما إذا كانت المشاركة السابقة في نفس اليوم
-                return (
-                    lastParticipationDate.getDate() === today.getDate() &&
-                    lastParticipationDate.getMonth() === today.getMonth() &&
-                    lastParticipationDate.getFullYear() === today.getFullYear()
-                );
+                // التحقق مما إذا كانت المشاركة في نفس اليوم
+                return participationDate === today;
             } catch (error) {
                 console.error('Error checking participation:', error);
                 // في حالة حدوث خطأ، نسمح بالمشاركة
@@ -824,10 +804,61 @@
             }
         }
 
+        // دالة تسجيل المشاركة اليومية المحسنة
         function recordLocalParticipation() {
-            const participationKey = simpleEncrypt('participated');
-            localStorage.setItem('lastParticipation', participationKey);
+            try {
+                // تسجيل تاريخ المشاركة الحالي بتنسيق YYYY-MM-DD
+                const today = getFormattedDate();
+                localStorage.setItem('participationDate', today);
+                
+                // تخزين معلومات إضافية للمشاركة (اختياري)
+                const participationInfo = {
+                    date: today,
+                    timestamp: new Date().toISOString(),
+                    playerName: gameState.playerName
+                };
+                localStorage.setItem('participationInfo', JSON.stringify(participationInfo));
+                
+                console.log('تم تسجيل المشاركة بنجاح:', today);
+                return true;
+            } catch (error) {
+                console.error('Error recording participation:', error);
+                return false;
+            }
         }
+
+        // دالة للتحقق من إعادة ضبط المشاركة يومياً
+        function checkAndResetParticipation() {
+            try {
+                const participationDate = localStorage.getItem('participationDate');
+                if (!participationDate) return; // لا توجد مشاركة سابقة
+                
+                const today = getFormattedDate();
+                if (participationDate !== today) {
+                    // تاريخ المشاركة المخزن ليس اليوم الحالي، نقوم بإعادة ضبط المشاركة
+                    console.log('إعادة ضبط المشاركة السابقة من تاريخ:', participationDate);
+                    
+                    // حفظ المشاركة السابقة في سجل المشاركات (اختياري)
+                    const previousParticipations = JSON.parse(localStorage.getItem('participationHistory') || '[]');
+                    const participationInfo = JSON.parse(localStorage.getItem('participationInfo') || '{}');
+                    
+                    if (participationInfo.date) {
+                        previousParticipations.push(participationInfo);
+                        localStorage.setItem('participationHistory', JSON.stringify(previousParticipations));
+                    }
+                    
+                    // إزالة بيانات المشاركة الحالية
+                    localStorage.removeItem('participationDate');
+                    localStorage.removeItem('participationInfo');
+                    
+                    console.log('تم إعادة ضبط المشاركة بنجاح');
+                }
+            } catch (error) {
+                console.error('Error checking/resetting participation:', error);
+            }
+        }
+        
+        // ===== نهاية التعديلات الجديدة =====
 
         // تحديث رسالة الوقت
         function updateTimeMessage() {
@@ -1034,85 +1065,18 @@
                 lucide.createIcons();
 
             } catch (error) {
-                console.error('Error saving results:', error);
+                                console.error('Error saving results:', error);
                 alert('حدث خطأ في حفظ النتيجة. يرجى المحاولة مرة أخرى.');
             }
         }
 
-
-        
-        // بدء المسابقة
-async function startQuiz() {
-    try {
-        // التحقق من المشاركة السابقة
-        if (checkLocalParticipation()) {
-            // المستخدم شارك بالفعل اليوم
-            elements.startScreen.classList.add('hidden');
-            elements.alreadyParticipatedScreen.classList.remove('hidden');
-            return;
-        }
-        
-        gameState.playerName = elements.playerNameInput.value.trim();
-        
-        // تسجيل المشاركة محلياً
-        recordLocalParticipation();
-        
-        // تسجيل المشارك في Firebase للإحصائيات فقط
-        try {
-            await db.collection('participants').add({
-                playerName: gameState.playerName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (error) {
-            console.error('Error recording participation in Firebase:', error);
-            // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
-        }
-        
-        // تحديد اليوم الحالي من الشهر
-        const today = new Date();
-        const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
-        
-        // تحديد اليوم المناسب من بنك الأسئلة
-        // إذا كان اليوم أكبر من 29، نستخدم اليوم 29 (آخر يوم في بنك الأسئلة)
-        // إذا كان اليوم أقل من 15، نستخدم اليوم 15 (أول يوم في بنك الأسئلة)
-        let questionDay = currentDay;
-        
-        if (questionDay > 29) {
-            questionDay = 29; // آخر يوم في بنك الأسئلة
-        } else if (questionDay < 15) {
-            questionDay = 15; // أول يوم في بنك الأسئلة
-        }
-        
-        console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
-        
-        // التحقق من وجود أسئلة لليوم المحدد
-        if (!ramadanQuestions[questionDay]) {
-            console.error(`لا توجد أسئلة لليوم ${questionDay}`);
-            alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
-            return;
-        }
-        
-        // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
-        gameState.questions = [...ramadanQuestions[questionDay]];
-        
-        elements.startScreen.classList.add('hidden');
-        elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
-        
-        startCountdown();
-    } catch (error) {
-        console.error('Error starting quiz:', error);
-        alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
-    }
-}
-
-
-
-
-        
         // تهيئة المسابقة
         function initializeQuiz() {
             try {
                 updateDateTime();
+                
+                // التحقق من إعادة ضبط المشاركة اليومية
+                checkAndResetParticipation();
                 
                 // التحقق من وقت المسابقة
                 const quizTimeStatus = checkQuizTimeStatus();
@@ -1134,23 +1098,97 @@ async function startQuiz() {
             }
         }
 
+        // بدء المسابقة
+        async function startQuiz() {
+            try {
+                // التحقق من المشاركة السابقة باستخدام النظام المحسن
+                if (checkLocalParticipation()) {
+                    // المستخدم شارك بالفعل اليوم
+                    elements.startScreen.classList.add('hidden');
+                    elements.alreadyParticipatedScreen.classList.remove('hidden');
+                    return;
+                }
+                
+                gameState.playerName = elements.playerNameInput.value.trim();
+                
+                // تسجيل المشاركة محلياً باستخدام النظام المحسن
+                recordLocalParticipation();
+                
+                // تسجيل المشارك في Firebase للإحصائيات
+                try {
+                    await db.collection('participants').add({
+                        playerName: gameState.playerName,
+                        participationDate: getFormattedDate(),
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error recording participation in Firebase:', error);
+                    // لا نوقف المسابقة في حالة فشل التسجيل في Firebase
+                }
+                
+                // تحديد اليوم الحالي من الشهر
+                const today = new Date();
+                const currentDay = today.getDate(); // يوم الشهر الحالي (1-31)
+                
+                // تحديد اليوم المناسب من بنك الأسئلة
+                let questionDay = currentDay;
+                
+                if (questionDay > 29) {
+                    questionDay = 29; // آخر يوم في بنك الأسئلة
+                } else if (questionDay < 15) {
+                    questionDay = 15; // أول يوم في بنك الأسئلة
+                }
+                
+                console.log(`اليوم الحالي: ${currentDay}، يوم الأسئلة المختار: ${questionDay}`);
+                
+                // التحقق من وجود أسئلة لليوم المحدد
+                if (!ramadanQuestions[questionDay]) {
+                    console.error(`لا توجد أسئلة لليوم ${questionDay}`);
+                    alert('عذراً، لا توجد أسئلة متاحة لهذا اليوم');
+                    return;
+                }
+                
+                // تحديث بنك الأسئلة باستخدام أسئلة اليوم المحدد
+                gameState.questions = [...ramadanQuestions[questionDay]];
+                
+                elements.startScreen.classList.add('hidden');
+                elements.playerWelcome.textContent = `مرحباً ${gameState.playerName}!`;
+                
+                startCountdown();
+            } catch (error) {
+                console.error('Error starting quiz:', error);
+                alert('حدث خطأ في بدء المسابقة. يرجى المحاولة مرة أخرى.');
+            }
+        }
+
+        // التحقق من صحة اسم اللاعب
+        function validatePlayerName() {
+            const playerName = elements.playerNameInput.value.trim();
+            if (playerName.length >= 3) {
+                elements.startButton.disabled = false;
+                elements.startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elements.startButton.disabled = true;
+                elements.startButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
         // إضافة مستمعي الأحداث
-        elements.playerNameInput.addEventListener('input', () => {
-            elements.startButton.disabled = !elements.playerNameInput.value.trim();
-        });
-
-        elements.startButton.addEventListener('click', startQuiz);
-
-        // بدء التطبيق
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', () => {
             try {
                 lucide.createIcons();
+                
+                elements.playerNameInput.addEventListener('input', validatePlayerName);
+                elements.startButton.addEventListener('click', startQuiz);
+                
                 initializeQuiz();
             } catch (error) {
-                console.error('Error initializing app:', error);
+                console.error('Error setting up event listeners:', error);
             }
         });
+
+        // تعريف دالة handleAnswer في النطاق العام
+        window.handleAnswer = handleAnswer;
     </script>
 </body>
 </html>
-
